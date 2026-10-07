@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { documents } from "./documents.js";
@@ -48,6 +48,50 @@ server.registerTool(
     documents[docId] = documents[docId].replaceAll(oldStr, newStr);
     return {
       content: [{ type: "text", text: documents[docId] }],
+    };
+  }
+);
+
+server.registerResource(
+  "list_documents",
+  "docs://documents",
+  {
+    description: "A list of IDs of all available documents",
+    mimeType: "application/json",
+  },
+  async (uri) => {
+    return {
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(Object.keys(documents)),
+        },
+      ],
+    };
+  }
+);
+
+server.registerResource(
+  "fetch_document",
+  new ResourceTemplate("docs://documents/{docId}", { list: undefined }),
+  {
+    description: "The contents of a specific document by ID",
+    mimeType: "text/plain",
+  },
+  async (uri, { docId }) => {
+    const id = Array.isArray(docId) ? docId[0] : docId;
+    if (!(id in documents)) {
+      throw new Error(`Document with id ${id} not found`);
+    }
+    return {
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "text/plain",
+          text: documents[id],
+        },
+      ],
     };
   }
 );
